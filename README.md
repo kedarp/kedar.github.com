@@ -1,1 +1,1 @@
-# Blog post repo on Github
+## Blog post repo on Github
