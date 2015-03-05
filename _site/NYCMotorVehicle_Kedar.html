@@ -1,0 +1,199 @@
+<h1 id="nyc-motor-vehicle-collision-data">NYC Motor Vehicle Collision Data</h1>
+
+<h3 id="background">Background</h3>
+
+<p>This data has been downloaded from as of 02/15/2015, <a href="https://data.cityofnewyork.us/NYC-BigApps/NYPD-Motor-Vehicle-Collisions/h9gi-nx95">NYC Open Data</a> website. It has 531,574 records and covers activity from 07/01/2012 to 02/10/2015. This analysis focuses only on full year 2013-2014.</p>
+
+<h3 id="preliminary-findings">Preliminary Findings</h3>
+
+<p>Strong seasonality is observed, with injuries peaking around beginning of summer, when more people are out on street.</p>
+
+<p>```{r, echo=FALSE, message=FALSE}
+nycmvc_data &lt;- read.csv(“/Users/kedarpatil/edav/data/NYPD_Motor_Vehicle_Collisions.csv”)</p>
+
+<h1 id="fixing-dates">FIXING DATES</h1>
+<p>nycmvc_data$DATE &lt;- as.Date(nycmvc_data$DATE, format=’%m/%d/%Y’)</p>
+
+<h1 id="creating-summary-table">CREATING SUMMARY TABLE</h1>
+<p>library(plyr)
+mth_frq_all &lt;- ddply(nycmvc_data, c(year_grp=”strftime(nycmvc_data$DATE, format=’%Y’)”,
+                                    mnth_grp=”strftime(nycmvc_data$DATE, format=’%m’)”), 
+                 summarise, Inj_Pers=sum(NUMBER.OF.PERSONS.INJURED), 
+                 Fat_Pers=sum(NUMBER.OF.PEDESTRIANS.KILLED))</p>
+
+<h1 id="character-to-numeric">CHARACTER TO NUMERIC</h1>
+<p>mth_frq_all$mnth_grp &lt;- as.numeric(mth_frq_all$mnth_grp)</p>
+
+<h1 id="plot-2013-2014-injuries-only">PLOT 2013-2014 INJURIES ONLY</h1>
+<p>library(dplyr)
+fltr_mth_frq_all &lt;- filter(mth_frq_all, year_grp==”2013”|year_grp==”2014”)</p>
+
+<h1 id="plot-injuries">PLOT INJURIES</h1>
+<p>require(ggplot2)
+require(scales) # for removing scientific notation</p>
+
+<p>(ggplot(fltr_mth_frq_all, aes(x=mnth_grp, y=Inj_Pers, color=year_grp, xmin=1, xmax=12, ymin=0, ymax = 7000)) 
+ + geom_line(size=1) + geom_point(size=3)
+ + ggtitle(“YoY Overall Injuries - 2013-2014”) 
+ + scale_y_continuous(labels = comma)
+ + scale_x_discrete(labels = comma)
+ + theme(plot.title=element_text(size=rel(1.5), face=”bold”))
+ + theme(axis.title=element_text(size=15), 
+         axis.text=element_text(size=10), 
+         legend.text=element_text(size=10),
+         legend.title=(element_text(size=10)))
+ + labs(x=”Month”, y=”Observed Frequency”, color=”Year”))</p>
+
+<p>```</p>
+
+<p>Motor vehicle injuries form the biggest share of injuries, followed by pedestrians. Number of injuries has not changed substantially across two years.</p>
+
+<p>```{r, echo=FALSE, message=FALSE}
+#PLOT 2013-2014 INJURIES ONLY - DEEPER DIVE
+mth_frq_deep &lt;- ddply(nycmvc_data, c(year_grp=”strftime(nycmvc_data$DATE, format=’%Y’)”,
+                                    mnth_grp=”strftime(nycmvc_data$DATE, format=’%m’)”), 
+                     summarise,               <br />
+                     Pedestrians=sum(NUMBER.OF.PEDESTRIANS.INJURED),
+                     Cyclists=sum(NUMBER.OF.CYCLIST.INJURED),
+                     Motorists=sum(NUMBER.OF.MOTORIST.INJURED))</p>
+
+<h1 id="character-to-numeric-1">CHARACTER TO NUMERIC</h1>
+<p>mth_frq_deep$mnth_grp &lt;- as.numeric(mth_frq_deep$mnth_grp)</p>
+
+<p>library(dplyr)
+fltr_mth_frq_deep &lt;- filter(mth_frq_deep, year_grp==”2013”| year_grp==”2014”)</p>
+
+<h1 id="melting-data">MELTING DATA</h1>
+<p>require(reshape2)
+tmp_melt &lt;- melt(fltr_mth_frq_deep,
+                 id = c(“year_grp”, “mnth_grp”),
+                 variable.name = “Injury_Category”, value.name = “Freq”)</p>
+
+<p>tmp_melt_bar &lt;- ddply(tmp_melt, c(“year_grp”,”Injury_Category”),
+                       summarise, “Frequency” = sum(Freq))</p>
+
+<p>require(scales) # for removing scientific notation</p>
+
+<p>(ggplot(tmp_melt_bar, aes(x=Injury_Category, y=Frequency, fill=year_grp, ymax = 45000)) + geom_bar(position=”dodge”,stat=”identity”)
+ + geom_text(aes(label=comma(Frequency)), vjust=-1, size=3.5, position=position_dodge(.9))
+ + scale_y_continuous(labels = comma)
+ + ggtitle(“YoY Injuries by Category - 2013-2014”)
+ + theme(plot.title=element_text(size=rel(1.5), face=”bold”))
+ + theme(axis.title=element_text(size=15), 
+         axis.text=element_text(size=10), 
+         legend.text=element_text(size=10),
+         legend.title=(element_text(size=10)))
+ + labs(x=”Injury Category”, y=”Observed Frequency”, fill=”Year”))</p>
+
+<p>```</p>
+
+<p>Further, pedestrians and cyclists have somewhat opposite relationship when it comes to injuries</p>
+
+<p>```{r, echo=FALSE, message=FALSE}
+#PLOT 2013-2014 INJURIES ONLY - DEEPER DIVE - LINE
+tmp_melt_line &lt;- ddply(tmp_melt, c(“mnth_grp”,”Injury_Category”),
+                      summarise, “Frequency” = sum(Freq))</p>
+
+<p>(ggplot(tmp_melt_line, aes(x=mnth_grp, y=Frequency, color=Injury_Category, xmin=1, xmax=12, ymin=0)) 
+ + geom_line(size=1) + geom_point(size=3)
+ + ggtitle(“Injuries by Category - 2013-2014”) 
+ + scale_y_continuous(labels = comma)
+ + scale_x_discrete(labels = comma)
+ + theme(plot.title=element_text(size=rel(1.5), face=”bold”))
+ + theme(axis.title=element_text(size=15), 
+         axis.text=element_text(size=10), 
+         legend.text=element_text(size=10),
+         legend.title=(element_text(size=10)))
+ + labs(x=”Month”, y=”Observed Frequency”, color=”Category”))</p>
+
+<p>```</p>
+
+<p>Passenger and SUVs contribute most to injuries</p>
+
+<p>```{r, echo=FALSE, message=FALSE}
+#PLOT VEHICLE TYPE AND INJURY
+inj_veh_typ &lt;- ddply(filter(nycmvc_data, DATE&gt;”2012-12-31” &amp; DATE&lt;”2015-01-01”),
+                     c(“VEHICLE.TYPE.CODE.1”), 
+                      summarise,               <br />
+                      Pedestrians=sum(NUMBER.OF.PEDESTRIANS.INJURED),
+                      Cyclists=sum(NUMBER.OF.CYCLIST.INJURED),
+                      Motorists=sum(NUMBER.OF.MOTORIST.INJURED))</p>
+
+<p>tmp_melt &lt;- melt(inj_veh_typ,
+                 id = c(“VEHICLE.TYPE.CODE.1”),
+                 variable.name = “Injury_Category”, value.name = “Frequency”)</p>
+
+<p>tmp_melt_bar &lt;- filter(tmp_melt, Injury_Category==”Pedestrians”)
+tmp_melt_bar &lt;- filter(tmp_melt, Injury_Category==”Cyclists”)
+tmp_melt_bar &lt;- filter(tmp_melt, Injury_Category==”Motorists”)</p>
+
+<p>require(scales) # for removing scientific notation</p>
+
+<p>(ggplot(tmp_melt_bar, aes(x=reorder(VEHICLE.TYPE.CODE.1,Frequency), y=Frequency, fill=VEHICLE.TYPE.CODE.1)) 
+ + geom_bar(stat=”identity”)
+ + coord_flip()
+ #+ geom_text(aes(label=comma(Frequency)), vjust=-1, size=6, position=position_dodge(.9))
+ + scale_y_continuous(labels = comma)
+ + ggtitle(“Injuries by Vehicle Type - 2013-2014 - Pedestrians”)
+# + ggtitle(“Injuries by Vehicle Type - 2013-2014 - Cyclists”)
+# + ggtitle(“Injuries by Vehicle Type - 2013-2014 - Motorists”)
+ + theme(plot.title=element_text(size=rel(1), face=”bold”))
+ + theme(axis.title=element_text(size=15), 
+         axis.text=element_text(size=10), 
+ #        legend.text=element_text(size=10),
+         legend.title=(element_text(size=10)))
+ + guides(fill=FALSE)
+ + labs(x=”Injury Category”, y=”Observed Frequency”, fill=”Vehicle”))</p>
+
+<p>```</p>
+
+<p>Looking for intersections that have had &gt;= 15 pedestrians injured in last 2 years, we see clusters in mid-town and upper manahattan and Bronx. There are a few spots in Queens and Brooklyn as well.</p>
+
+<p>```{r, echo=FALSE, message=FALSE, cache=FALSE, warning=FALSE}
+#CREATING SUMMARY TABLE
+library(plyr)
+injureped=subset(nycmvc_data,NUMBER.OF.PEDESTRIANS.INJURED &gt; 0)</p>
+
+<p>injureped_loc &lt;- ddply(injureped, c(“LONGITUDE”, “LATITUDE”), 
+                     summarise, Inj_No=sum(NUMBER.OF.PERSONS.INJURED))</p>
+
+<p>injureped_loc_sum &lt;- ddply(injureped_loc, c(“Inj_No”), 
+                       summarise, FreqCnt=length(Inj_No))</p>
+
+<p>high_injure_loc_ped &lt;- subset(injureped_loc, Inj_No &gt;= 15)</p>
+
+<p>library(ggmap)
+nycmap &lt;- get_map(location = “Queens, New York”, zoom=11)</p>
+
+<p>(nyc1 &lt;- ggmap(nycmap) + scale_color_discrete(name = “&gt;=15 Pedestrians Injured - 2013-2014”)
+    + ggtitle(“&gt;=15 Pedestrians Injured - 2013-2014”)
+ + theme(plot.title=element_text(size=rel(1), face=”bold”))
+ + theme(legend.text=element_text(size=0),
+         legend.title=(element_text(size=0)),
+        legend.position=”none”)
++ geom_point(data=high_injure_loc_ped, aes(LONGITUDE, LATITUDE, color = ‘Pedestrians’), size=2, alpha=1))
+```</p>
+
+<p>Major streets and intersections around 14th, 23rd, 34th, 42nd, and Times Square, as well as 119th, 125th, and 135th streets seem to have high number of injuries.</p>
+
+<p>```{r, echo=FALSE, message=FALSE, cache=FALSE, warning=FALSE}
+nycmap &lt;- get_map(location = “Flatiron, New York”, zoom=13)</p>
+
+<p>(nyc1 &lt;- ggmap(nycmap) + scale_color_discrete(name = “&gt;=15 Pedestrians Injured - 2013-2014”)
+ + ggtitle(“&gt;=15 Pedestrians Injured - Mid, Lower Manhattan”)
+ + theme(plot.title=element_text(size=rel(1), face=”bold”))
+ + theme(legend.text=element_text(size=0),
+         legend.title=(element_text(size=0)),
+         legend.position=”none”)
+ + geom_point(data=high_injure_loc_ped, aes(LONGITUDE, LATITUDE, color = ‘Pedestrians’), size=3))</p>
+
+<p>nycmap &lt;- get_map(location = “Harlem, New York”, zoom=14)</p>
+
+<p>(nyc1 &lt;- ggmap(nycmap) + scale_color_discrete(name = “&gt;=15 Pedestrians Injured - 2013-2014”)
+ + ggtitle(“&gt;=15 Pedestrians Injured - Upper Manhattan &amp; Bronx”)
+ + theme(plot.title=element_text(size=rel(1), face=”bold”))
+ + theme(legend.text=element_text(size=0),
+         legend.title=(element_text(size=0)),
+         legend.position=”none”)
+ + geom_point(data=high_injure_loc_ped, aes(LONGITUDE, LATITUDE, color = ‘Pedestrians’), size=3))
+```</p>
