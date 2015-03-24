@@ -1,0 +1,122 @@
+---
+title: "Mini assignment 1"
+author: "Kedar Patil"
+date: "February 16, 2015"
+output: html_document
+layout: post
+description: mini-assignment
+tags: assignments, Kedar Patil
+---
+
+##Comparative Stats for BRIC Countries
+\
+
+
+###Background
+
+I came across this visual comparing macro economic statistics for BRIC countries on the [Media Research Lab](https://mediaresearchlab.wordpress.com/2012/04/22/infographics-bric-in-comparison/) website. BRIC stands for a group of four countries - Brazil, Russia, India and China, which are all considered at similar stage of economic development. The original visual (reproduced below) seeks to produce a comparative understanding of these countries around 6 factors -  Population size, Population growth rate, Unemployment, Inflation, GDP, and Military expenditure.
+\  
+\  
+
+```{r, echo=FALSE, message=FALSE, fig.width=7, fig.height=4}
+library(png)
+library(grid)
+img <- readPNG("/Users/kedarpatil/Documents/St-4701 - Data Visualization/kedar.github.io/blog_assignment/_assets/russia-and-india-in-comparison.png")
+grid.raster(img)
+
+```
+\
+*Figure1: Original visual from Media Research Lab*
+
+\  
+
+
+
+###Observations
+
++ *Inconsistant formatting*
+
+    While Brazil and China population numbers are comma saperated, India and       Russia are saparated by a dot. Similar thing is observed for percentage   values for inflation rates.   
+
+
++ *Visual reresentation is harder to comprehend*
+
+    Even though all numbers are on one visual, the information is siloed, and not readily compared. One has to work a bit to understand comparitive magnitude and standings of each country on metrics that are being presented.   
+
++ *Distracting visuals*
+
+    The purpose of human figures represented on country maps is unclear, distracting, and adds to the clutter. 
+
+\  
+
+
+###Scatter plot Matrix & Bar Charts
+
+All of the above data can be represented in a compact form using a comination of scatter plot matrix and Bar charts. 
+\
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.width=6}
+setwd("/Users/kedarpatil/Documents/St-4701 - Data Visualization/kedar.github.io/blog_assignment")
+
+bric_data <- read.csv("Bric_data.csv")
+
+# another option - using code at https://gastonsanchez.wordpress.com/2012/08/27/scatterplot-matrices-with-ggplot/
+
+makePairs <- function(data) 
+{
+  grid <- expand.grid(x = 2:ncol(data), y = 2:ncol(data))
+  grid <- subset(grid, x != y)
+  all <- do.call("rbind", lapply(1:nrow(grid), function(i) {
+    xcol <- grid[i, "x"]
+    ycol <- grid[i, "y"]
+    data.frame(xvar = names(data)[ycol], yvar = names(data)[xcol], 
+               x = data[, xcol], y = data[, ycol], data)
+  }))
+  all$xvar <- factor(all$xvar, levels = names(data))
+  all$yvar <- factor(all$yvar, levels = names(data))
+  densities <- do.call("rbind", lapply(2:ncol(data), function(i) {
+    data.frame(xvar = names(data)[i], yvar = names(data)[i], x = data[, i])
+  }))
+  list(all=all, densities=densities)
+#list(all=all)
+}
+
+# expand iris data frame for pairs plot
+gg1 = makePairs(bric_data[1:6])
+
+tmp <- data.frame(gg1$densities,Countries=rep(bric_data$Country, length=nrow(gg1$densities)))
+library(ggplot2)
+ggplot(tmp, aes(x=Countries, y=x, fill=Countries)) + 
+  facet_grid(xvar ~ ., scales = "free") + 
+  geom_bar(stat="identity") + 
+  geom_text(aes(label=x), vjust=1.5, size=2)
+```
+\
+*Figure2: Distribution of variables by Country*
+\  
+
+We see that India and China have significantly higher population than Brazil and Russia. Also, Russia has the highest per capita GDP ($16,700), as well as highest inflation rate at 8.9%. It is also the only country with declining population. Brazil and India have highest population growth, little over 1%. India has higest unemployment rate at 9.8%
+\  
+
+
+
+```{r, echo=FALSE, message=FALSE}
+# new data frame mega iris
+mega_bric = data.frame(gg1$all, Countries=rep(bric_data$Country, length=nrow(gg1$all)))
+
+# pairs plot
+library(ggplot2)
+ggplot(mega_bric, aes_string(x = "x", y = "y")) + 
+  facet_grid(xvar ~ yvar, scales = "free") + 
+  geom_point(aes(colour=Countries, size=1), na.rm = TRUE, alpha=0.8)
+```
+\
+*Figure3: Scatter plot metrix of variables*
+\  
+
+Looking at same data on a scatter matrix plot further reveals some similarities between countries. 
+\  
+
+
++    Brazil and Russia are most similar in terms of number of unemployed people
++    India stands out in terms of higest unemployment as well as population growth rate
++    Russia jumps out in terms of highest GDP per capita, as well as highest inflation rate
