@@ -8,7 +8,6 @@ description: mini-assignment
 tags: assignments, Kedar Patil
 ---
 
-#NYC Motor Vehicle Collision Data
 
 ###Background
 
