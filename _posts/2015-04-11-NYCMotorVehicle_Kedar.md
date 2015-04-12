@@ -1,5 +1,5 @@
 ---
-title: "Mini assignment 1"
+title: "NYC Motor Vehicle Collision Data"
 author: "Kedar Patil"
 date: "February 16, 2015"
 output: html_document
